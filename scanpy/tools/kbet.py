@@ -1,5 +1,7 @@
 from typing import Union
 
+import numpy as np
+import pandas as pd
 from scipy.sparse import spmatrix
 from scipy.stats import chisquare
 from anndata import AnnData
@@ -41,12 +43,26 @@ def kbet(
     if adjacency is None:
         if 'neighbors' not in adata.uns:
             raise ValueError('No neighbors found. Provide the `adjacency` parameter or run `sc.pp.neighbors(adata)`')
-        adjacency = adata.uns['neighbors']['connectivities']
+        adjacency = adata.uns['neighbors']['connectivities']  # type: spmatrix
+    adjacency = adjacency.tocsr()
 
-    f_obs = None
-    f_exp = None
-    ddof = None
-    scores, p_vals = chisquare(f_obs, f_exp, ddof)
+    n_obs = adata.n_obs
+    batch_ids = pd.Categorical(adata.obs[batch_key])
+    # dof = len(batch_ids.unique()) - 1
+
+    freqs_all = batch_ids.value_counts().sort_index()
+    freqs_neighbors = np.ndarray((n_obs, len(batch_ids.categories)))
+
+    mask = adjacency != 0
+    # cat_2d = np.tile(batch_ids, (n_obs, 1))
+    # mapped = np.where(mask.A, cat_2d, None)
+    for obs_i in range(n_obs):
+        row_idx = mask[:, obs_i].A.flatten()
+        freqs_obs = batch_ids[row_idx].value_counts().sort_index()
+        freqs_neighbors[obs_i, :] = freqs_obs
+
+    ddof = 0  # TODO
+    scores, p_vals = chisquare(freqs_neighbors, freqs_all, ddof, axis=1)
     score_mean = scores.mean()
 
     if copy:

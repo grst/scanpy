@@ -20,7 +20,7 @@ def test_kbet_needs_neighbors(adata_kbet_sim):
 
 
 def test_kbet_basic(adata_kbet_sim):
-    sc.pp.neighbors(adata_kbet_sim)
-    acceptance = sc.tl.kbet(adata_kbet_sim, k=75)  # type: float
+    sc.pp.neighbors(adata_kbet_sim, n_neighbors=75)
+    acceptance = sc.tl.kbet(adata_kbet_sim)  # type: float
     # R determined: rejection=0.0436 k=75
     assert .040 < acceptance < .050
