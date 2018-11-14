@@ -122,6 +122,14 @@ Gene scores, Cell cycle
    tl.sandbag
    tl.cyclone
 
+Cluster scores
+~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: .
+
+   tl.kbet
+
 Simulations
 ~~~~~~~~~~~
 
@@ -259,7 +267,7 @@ Datasets
    datasets.krumsiek11
    datasets.moignard15
    datasets.pbmc3k
-   datasets.pbmc68k_reduced	     
+   datasets.pbmc68k_reduced
    datasets.paul15
    datasets.toggleswitch
 
