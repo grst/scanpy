@@ -8,3 +8,5 @@ from ..preprocessing.mnn_correct import mnn_correct
 from ..preprocessing.dca import dca
 from ..preprocessing.magic import magic
 from ..neighbors import neighbors
+
+from ..preprocessing.normalization import normalize_quantile, normalize_total
