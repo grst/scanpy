@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import spmatrix
 from scipy.stats import chisquare
+from statsmodels.stats.multitest import multipletests
 from anndata import AnnData
 
 
@@ -11,6 +12,7 @@ def kbet(
     adata: AnnData,
     batch_key: str = 'batch',
     *,
+    alpha: float = .05,
     adjacency: spmatrix = None,
     copy: bool = False,
 ) -> Union[AnnData, float]:
@@ -25,6 +27,8 @@ def kbet(
         Annotated data matrix.
     batch_key
         The column in :attr:`anndata.AnnData.uns` to use as batch ID.
+    alpha
+        family-wise error rate. If p > ``alpha`` for the χ²-test on the neighborhood which to consider
     adjacency
         Sparse adjacency matrix of the graph, defaults to
         ``adata.uns['neighbors']['connectivities']``.
@@ -50,7 +54,7 @@ def kbet(
     batch_ids = pd.Categorical(adata.obs[batch_key])
     # dof = len(batch_ids.unique()) - 1
 
-    freqs_all = batch_ids.value_counts().sort_index()
+    freqs_all = batch_ids.value_counts().sort_index() / len(batch_ids)
     freqs_neighbors = np.ndarray((n_obs, len(batch_ids.categories)))
 
     mask = adjacency != 0
@@ -58,16 +62,17 @@ def kbet(
     # mapped = np.where(mask.A, cat_2d, None)
     for obs_i in range(n_obs):
         row_idx = mask[:, obs_i].A.flatten()
-        freqs_obs = batch_ids[row_idx].value_counts().sort_index()
+        freqs_obs = batch_ids[row_idx].value_counts().sort_index() / row_idx.sum()
         freqs_neighbors[obs_i, :] = freqs_obs
 
-    ddof = 0  # TODO
-    scores, p_vals = chisquare(freqs_neighbors, freqs_all, ddof, axis=1)
-    score_mean = scores.mean()
+    _, p_vals_uncor = chisquare(freqs_neighbors, freqs_all, axis=1)
+    rejected, p_vals, *_ = multipletests(p_vals_uncor, alpha)
+    rate_rej = rejected.sum() / len(p_vals)
 
+    rate_acc = 1 - rate_rej
     if copy:
         ad_ret = adata.copy()
-        ad_ret.uns['kbet'] = score_mean  # TODO: column for e.g. kbet-per-louvain
+        ad_ret.uns['kbet'] = rate_acc  # TODO: column for e.g. kbet-per-louvain
         return ad_ret
     else:
-        return score_mean
+        return rate_acc
